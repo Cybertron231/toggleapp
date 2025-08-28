@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QHBoxLayout, QMessageBox, QSpinBox, QHeaderView, QFileDialog, QComboBox
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QIcon
+from PyQt6.QtGui import QColor, QIcon, QBrush, QPalette
 import glob
 import os
 import re
@@ -174,7 +174,7 @@ class CharacterPartsEditor(QWidget):
 
         for i, mesh_name in enumerate(self.charaparts):
             self.table2.setItem(i, 0, QTableWidgetItem(mesh_name))
-            ini_name = re.sub(r'[^a-zA-Z0-9\s]', '', mesh_name)
+            ini_name = re.sub(r'[^\w\s]', '', mesh_name, flags=re.UNICODE)
             self.table2.setItem(i, 1, QTableWidgetItem(ini_name))
             self.table2.setItem(i, 2, QTableWidgetItem(existing_conditions[i]))
             combo = QComboBox()
@@ -428,6 +428,7 @@ For full key documentation, please see <a href="https://forums.frontier.co.uk/at
 An empty visibility condition means that no if statement will be generated for it!<br><br>
 Use the test values to check for mesh visibility depending on your variable values and for any errors!<br><br>
 <b>Refreshing mesh names will not lose your conditions or variables!</b><br><br>
+<h2>If the script isn't working, please make sure you do not have spaces at the end of names!</h2><br><br>
 <br>
 Condition tips:<br>
 <b>Always start variables with $!</b><br>
@@ -517,8 +518,12 @@ Templates do not support mesh reordering!<br>
         bad_variables = re.findall(r'(?<!\$)\b[a-zA-Z_][a-zA-Z0-9_]*\b', condition)
         #print(bad_variables)
         vars = []
-        item.setBackground(QColor("#2D2D2D"))
-        item.setForeground(Qt.GlobalColor.white)      # White text (visible even when selected)
+        item.setBackground(QBrush())
+        if app.palette().color(QPalette.ColorRole.Window).lightness()<128:
+            item.setForeground(Qt.GlobalColor.white)      # White text (visible even when selected)
+        else:
+            item.setForeground(Qt.GlobalColor.black)      # White text (visible even when selected)
+
         test_variables= []
         for i in range(self.table1.rowCount()):
             test_variables.append(self.table1.item(i, 1).text().strip())
@@ -526,7 +531,10 @@ Templates do not support mesh reordering!<br>
             if variable.strip() not in test_variables:
                 #print("failure!")
                 item.setBackground(QColor("red"))
-                item.setForeground(QColor("white"))      # White text (visible even when selected)
+                if app.palette().color(QPalette.ColorRole.Window).lightness()<128:
+                    item.setForeground(Qt.GlobalColor.white)      # White text (visible even when selected)
+                else:
+                    item.setForeground(Qt.GlobalColor.black)      # White text (visible even when selected)                
                 self.table2.setItem(item.row(), 3, QTableWidgetItem("Error"))
                 self.table2.blockSignals(False)
                 return
@@ -536,7 +544,10 @@ Templates do not support mesh reordering!<br>
             if self.validate_condition(condition) is not None or len(bad_variables)!=0:
                 #print("failure!")
                 item.setBackground(QColor("red"))
-                item.setForeground(QColor("white"))      # White text (visible even when selected)
+                if app.palette().color(QPalette.ColorRole.Window).lightness()<128:
+                    item.setForeground(Qt.GlobalColor.white)      # White text (visible even when selected)
+                else:
+                    item.setForeground(Qt.GlobalColor.black)      # White text (visible even when selected) 
                 self.table2.setItem(item.row(), 3, QTableWidgetItem("Error"))
                 self.table2.blockSignals(False)
                 return
@@ -632,16 +643,16 @@ Templates do not support mesh reordering!<br>
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
-                with open(filename, "w") as file2:
+                with open(filename, "w", encoding="utf-8") as file2:
                     for i, line in enumerate(lines):      
                         file2.write(line)
         else:
-            with open(filename, "w") as file2:
+            with open(filename, "w", encoding="utf-8") as file2:
                 for i, line in enumerate(lines):      
                     file2.write(line)
         print(lines)
         try:
-            with open(filename) as file2:
+            with open(filename, "r", encoding="utf-8") as file2:
                 lines = file2.readlines()
         except FileNotFoundError:
             print(f"Error: '{filename}' not found.")
@@ -686,7 +697,7 @@ Templates do not support mesh reordering!<br>
         global skip
         global activeWritten
         activeWritten = False
-        with open(filetoo+f'{charaname}.ini', "w") as file:
+        with open(filetoo+f'{charaname}.ini', "w", encoding="utf-8") as file:
             print("opening")
             for i, line in enumerate(lines):
                 if toggleWrite:
@@ -714,68 +725,87 @@ Templates do not support mesh reordering!<br>
                                     #file.write("if $" +charaparts[partscounter].replace(".", "") + "== 1\n")
                                     for i in range(len(lines)):
                                         print("looking")
-                                        if ("; " + meshes[partscounter] + " (") in lines[i]:
-                                            print("Found line:", lines[i])
-                                            file.write(lines[i+1])  
-                                            break
+                                        if "; " in lines[i] and " (" in lines[i]:
+                                        #if ("; " + meshes[partscounter] + " (") in lines[i]:
+                                            before = lines[i].split(" (", 1)[0].strip()
+                                            if before == ("; " + meshes[partscounter]):
+                                                print("Found line:", lines[i])
+                                                file.write(lines[i+1])  
+                                                break
                                     #file.write(line)
                                     if endif:
                                         file.write("endif\n")
                                 else:
                                     for i in range(len(lines)):
                                         print("looking")
-                                        if ("; " + meshes[partscounter] + " (") in lines[i]:
-                                            print("Found line:", lines[i])
-                                            file.write(lines[i+1])  
-                                            break  
+                                        if "; " in lines[i] and " (" in lines[i]:
+                                        #if ("; " + meshes[partscounter] + " (") in lines[i]:
+                                            before = lines[i].split(" (", 1)[0].strip()
+                                            if before == ("; " + meshes[partscounter]):
+                                                print("Found line:", lines[i])
+                                                file.write(lines[i+1])  
+                                                break 
                             elif value == "else":
                                 file.write("else\n")  
                                 for i in range(len(lines)):
                                         print("looking")
-                                        if ("; " + meshes[partscounter] + " (") in lines[i]:
-                                            print("Found line:", lines[i])
-                                            file.write(lines[i+1])  
-                                            break
+                                        if "; " in lines[i] and " (" in lines[i]:
+                                        #if ("; " + meshes[partscounter] + " (") in lines[i]:
+                                            before = lines[i].split(" (", 1)[0].strip()
+                                            if before == ("; " + meshes[partscounter]):
+                                                print("Found line:", lines[i])
+                                                file.write(lines[i+1])  
+                                                break 
                             elif value == "else if":
                                 file.write("else if " + condition.lower().strip() +"\n")
                                 #file.write("if $" +charaparts[partscounter].replace(".", "") + "== 1\n")
                                 for i in range(len(lines)):
                                         print("looking")
-                                        if ("; " + meshes[partscounter] + " (") in lines[i]:
-                                            print("Found line:", lines[i])
-                                            file.write(lines[i+1])  
-                                            break
+                                        if "; " in lines[i] and " (" in lines[i]:
+                                        #if ("; " + meshes[partscounter] + " (") in lines[i]:
+                                            before = lines[i].split(" (", 1)[0].strip()
+                                            if before == ("; " + meshes[partscounter]):
+                                                print("Found line:", lines[i])
+                                                file.write(lines[i+1])  
+                                                break
                                 if endif:
                                     file.write("endif\n")     
                             else:
                                 for i in range(len(lines)):
                                         print("looking")
-                                        if ("; " + meshes[partscounter] + " (") in lines[i]:
-                                            print("Found line:", lines[i])
-                                            file.write(lines[i+1])  
-                                            break
+                                        if "; " in lines[i] and " (" in lines[i]:
+                                        #if ("; " + meshes[partscounter] + " (") in lines[i]:
+                                            before = lines[i].split(" (", 1)[0].strip()
+                                            if before == ("; " + meshes[partscounter]):
+                                                print("Found line:", lines[i])
+                                                file.write(lines[i+1])  
+                                                break
                                 file.write("endif\n") 
                         partscounter+=1
                         toggleWrite = False
-  
                 else:
                     if not self.expertMode:
-                        if partscounter<len(meshes) and ("; " + meshes[partscounter] + " (") in line:
-                            print(line)
-                            toggleWrite = True
-                        file.write(line)    
+                        if "; " in line and " (" in line:
+                            after_semicolon = line.split("; ", 1)[1]
+                            # split again at " ("
+                            mesh_name = after_semicolon.split(" (", 1)[0].strip()
+                            if partscounter<len(meshes) and mesh_name in meshes:
+                                print(line)
+                                toggleWrite = True
+                            file.write(line)    
                     else:
                         if "; " in line and " (" in line:
                             # split once at "; "
                             after_semicolon = line.split("; ", 1)[1]
                             # split again at " ("
-                            mesh_name = after_semicolon.split(" (", 1)[0]
+                            mesh_name = after_semicolon.split(" (", 1)[0].strip()
+                            parts_index = after_semicolon.split(" (", 1)[1].strip()
                             if partscounter<len(meshes) and mesh_name in meshes:
                                 print(line)
                                 toggleWrite = True
                                 for look in lines:
                                     print("looking")
-                                    if ("; " + meshes[partscounter] + " (") in look:
+                                    if meshes[partscounter] in look and "; " in look and parts_index in look:
                                         print("Found line:", look)
                                         file.write(look)  
                                         break
@@ -879,7 +909,7 @@ Templates do not support mesh reordering!<br>
         chk = 0
         for i, mesh_name in enumerate(charaparts):
             self.table2.setItem(i, 0, QTableWidgetItem(mesh_name))
-            ini_name = re.sub(r'[^a-zA-Z0-9\s]', '', mesh_name)
+            ini_name = re.sub(r'[^\w\s]', '', mesh_name, flags=re.UNICODE)
             self.table2.setItem(i, 1, QTableWidgetItem(ini_name))
             if ini_name == conditions[chk][0]:
                 self.table2.setItem(i, 2, QTableWidgetItem(conditions[chk][1]))
@@ -904,7 +934,7 @@ Templates do not support mesh reordering!<br>
         if new_file:
             #print(new_file)
             try:
-                with open(new_file) as f:
+                with open(new_file, "r", encoding="utf-8") as f:
                     filepath=f.name
                     lines = f.readlines()
             except FileNotFoundError:
@@ -955,7 +985,7 @@ def find_file():
 
     
     try:
-        with open(file_name) as file2:
+        with open(file_name, "r", encoding="utf-8") as file2:
             filepath=file2.name
             #print(file2.name)
             lines = file2.readlines()
@@ -1035,7 +1065,7 @@ if __name__ == "__main__":
     #print(charaname)
 
     try:
-        with open(file_name) as file2:
+        with open(file_name, "r", encoding="utf-8") as file2:
             filepath=file2.name
             print(file2.name)
             lines = file2.readlines()
