@@ -907,17 +907,18 @@ Templates do not support mesh reordering!<br>
         self.table2.setRowCount(len(charaparts))
         self.table2.setHorizontalHeaderLabels(["Mesh Name", "Ini Name", "Visibility Condition", "Visible"])
         chk = 0
+        conditions_dict = {name: value for name, value in conditions}
+
         for i, mesh_name in enumerate(charaparts):
             self.table2.setItem(i, 0, QTableWidgetItem(mesh_name))
             ini_name = re.sub(r'[^\w\s]', '', mesh_name, flags=re.UNICODE)
             self.table2.setItem(i, 1, QTableWidgetItem(ini_name))
-            if ini_name == conditions[chk][0]:
-                self.table2.setItem(i, 2, QTableWidgetItem(conditions[chk][1]))
-                chk+=1
-            #if i < len(existing_conditions):
-            #    self.table2.setItem(i, 2, QTableWidgetItem(existing_conditions[i]))
-            #else:
-            #    self.table2.setItem(i, 2, QTableWidgetItem(""))
+
+            # Check if ini_name exists in conditions_dict
+            if ini_name in conditions_dict:
+                self.table2.setItem(i, 2, QTableWidgetItem(conditions_dict[ini_name]))
+            else:
+                self.table2.setItem(i, 2, QTableWidgetItem(""))
 
         self.table2.resizeColumnToContents(0)
         self.table2.resizeColumnToContents(1)
