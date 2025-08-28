@@ -791,8 +791,8 @@ Templates do not support mesh reordering!<br>
                             mesh_name = after_semicolon.split(" (", 1)[0].strip()
                             if partscounter<len(meshes) and mesh_name in meshes:
                                 print(line)
-                                toggleWrite = True
-                            file.write(line)    
+                                toggleWrite = True 
+                        file.write(line)    
                     else:
                         if "; " in line and " (" in line:
                             # split once at "; "
